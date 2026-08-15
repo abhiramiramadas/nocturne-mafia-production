@@ -1,0 +1,32 @@
+{
+  "name": "nocturne-mafia",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx server/index.ts",
+    "dev:client": "vite",
+    "build": "tsc -b && vite build",
+    "start": "tsx server/index.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.14.0",
+    "express": "^5.1.0",
+    "framer-motion": "^12.23.12",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.0",
+    "prisma": "^6.14.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
+  }
+}

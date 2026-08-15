@@ -1,0 +1,13 @@
+import express from "express"; import {createServer} from "http"; import {Server} from "socket.io"; import crypto from "crypto";
+type Role="MAFIA"|"DOCTOR"|"DETECTIVE"|"CITIZEN"; type P={id:string;name:string;alive:boolean;host:boolean;role?:Role};
+type R={code:string;players:P[];phase:"lobby"|"night"|"day"|"vote"|"ended";message:string;timer:number;winner?:string;night:{mafia?:string;doctor?:string;detective?:string}};
+const rooms=new Map<string,R>(); const app=express(); const http=createServer(app); const io=new Server(http,{cors:{origin:"*"}});
+function code(){return crypto.randomBytes(3).toString("hex").toUpperCase()} function roles(n:number):Role[]{let a:Role[]=["MAFIA","DOCTOR","DETECTIVE"];while(a.length<n)a.push("CITIZEN");return a.sort(()=>Math.random()-.5)}
+function view(r:R,id:string){const p=r.players.find(x=>x.id===id)!;return {roomCode:r.code,phase:r.phase,players:r.players.map(({id,name,alive,host})=>({id,name,alive,host})),me:{id:p.id,name:p.name,role:p.role,alive:p.alive,host:p.host},message:r.message,winner:r.winner,timer:r.timer}}
+function broadcast(r:R){for(const p of r.players)io.to(p.id).emit("room:update",view(r,p.id))}
+io.on("connection",s=>{s.on("room:create",({name},cb)=>{const r:R={code:code(),players:[{id:s.id,name,alive:true,host:true}],phase:"lobby",message:"The circle gathers.",timer:0,night:{}};rooms.set(r.code,r);s.join(r.code);cb({code:r.code});broadcast(r)});
+s.on("room:join",({name,code},cb)=>{const r=rooms.get(code);if(!r)return cb({error:"Room not found"});if(r.phase!=="lobby")return cb({error:"Game already started"});if(r.players.length>=12)return cb({error:"Room is full"});r.players.push({id:s.id,name,alive:true,host:false});s.join(r.code);cb({ok:true});broadcast(r)});
+s.on("game:start",()=>{const r=[...rooms.values()].find(x=>x.players.some(p=>p.id===s.id));if(!r)return;if(!r.players.find(p=>p.id===s.id)?.host||r.players.length<2)return;const rr=roles(r.players.length);r.players.forEach((p,i)=>p.role=rr[i]);r.phase="night";r.message="The city falls silent.";r.timer=60;broadcast(r);for(const p of r.players)io.to(p.id).emit("game:reveal");io.to(r.code).emit("narrate","The cards have been dealt. Discover your fate. Night has fallen.")});
+s.on("disconnect",()=>{for(const r of rooms.values()){const i=r.players.findIndex(p=>p.id===s.id);if(i<0)continue;r.players.splice(i,1);if(!r.players.length)rooms.delete(r.code);else{if(!r.players.some(p=>p.host))r.players[0].host=true;broadcast(r)}}})});
+app.get("/health",(_,res)=>res.json({ok:true,rooms:rooms.size}));
+http.listen(3001,()=>console.log("Nocturne server listening on :3001"));
